@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/eventstore.iml" filepath="$PROJECT_DIR$/eventstore.iml" />
+      <module fileurl="file://$PROJECT_DIR$/jeventstore/jeventstore.iml" filepath="$PROJECT_DIR$/jeventstore/jeventstore.iml" />
+    </modules>
+  </component>
+</project>
