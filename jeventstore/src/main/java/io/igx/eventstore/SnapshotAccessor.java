@@ -29,6 +29,7 @@ import java.util.Collection;
 import io.igx.eventstore.persistence.StorageException;
 import io.igx.eventstore.persistence.StorageUnavailableException;
 import io.igx.eventstore.persistence.StreamHead;
+import reactor.core.publisher.Flux;
 
 /**
  * @author Vinicius Carvalho
@@ -67,5 +68,5 @@ public interface SnapshotAccessor {
 	 * @throws StorageUnavailableException
 	 * @return The streams for which the head and snapshot revisions differ by at least the threshold specified.
 	 */
-	Collection<StreamHead> getStreamsToSnapshot(String bucketId, int maxThreshold);
+	Flux<StreamHead> getStreamsToSnapshot(String bucketId, int maxThreshold);
 }

@@ -27,5 +27,48 @@ package io.igx.eventstore.persistence;
 /**
  * @author Vinicius Carvalho
  */
-public interface StreamHead {
+public class StreamHead {
+	private final String bucketId;
+	private final String streamId;
+	private final Integer headRevision;
+	private final Integer snapShotRevision;
+
+	public StreamHead(String bucketId, String streamId, Integer headRevision, Integer snapShotRevision) {
+		this.bucketId = bucketId;
+		this.streamId = streamId;
+		this.headRevision = headRevision;
+		this.snapShotRevision = snapShotRevision;
+	}
+
+	public String getBucketId() {
+		return bucketId;
+	}
+
+	public String getStreamId() {
+		return streamId;
+	}
+
+	public Integer getHeadRevision() {
+		return headRevision;
+	}
+
+	public Integer getSnapShotRevision() {
+		return snapShotRevision;
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+
+		StreamHead that = (StreamHead) o;
+
+		return streamId.equals(that.streamId);
+
+	}
+
+	@Override
+	public int hashCode() {
+		return streamId.hashCode();
+	}
 }

@@ -42,6 +42,16 @@ public class EventMessage<T> {
 		this.headers = new HashMap<String, Object>();
 	}
 
+	public EventMessage(Map<String, Object> headers, T body) {
+		this.headers = headers;
+		this.body = body;
+	}
+
+	public EventMessage(T body) {
+		this.body = body;
+		this.headers = new HashMap<String, Object>();
+	}
+
 	/**
 	 *
 	 * @return the metadata which provides additional, unstructured information about this message.

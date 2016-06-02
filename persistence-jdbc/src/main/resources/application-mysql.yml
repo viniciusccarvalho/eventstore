@@ -1,0 +1,83 @@
+
+sql:
+  commands:
+    persistCommit: "INSERT INTO COMMITS ( BUCKET_ID, STREAM_ID, STREAM_ID_ORIGINAL, COMMIT_ID, COMMIT_SEQUENCE, STREAM_REVISION, ITEMS, COMMIT_STAMP, HEADERS, PAYLOAD ) VALUES (?,?,?,?,?,?,?,?,?,?);"
+
+    commitsFromStartingRevision: "SELECT      *
+                                    FROM      COMMITS
+                                    WHERE     BUCKET_ID = ?
+                                    AND       STREAM_ID = ?
+                                    AND       STREAM_REVISION >= ?
+                                    AND       (STREAM_REVISION - ITEMS) < ?
+                                    AND       COMMIT_SEQUENCE > ?
+                                    ORDER BY  COMMIT_SEQUENCE;"
+
+    commitsFromInstant: "SELECT       *
+                            FROM      COMMITS
+                            WHERE     BUCKET_ID = ?
+                            AND       COMMIT_STAMP >= ?
+                            ORDER BY  COMMIT_STAMP, STREAM_ID, COMMIT_SEQUENCE;"
+
+    commitsFromToInstant: "SELECT       *
+                            FROM        COMMITS
+                            WHERE       BUCKET_ID = ?
+                            AND         COMMIT_STAMP >= ?
+                            AND         COMMIT_STAMP <= ?
+                            ORDER BY    COMMIT_STAMP, STREAM_ID, COMMIT_SEQUENCE;"
+
+    commitsFromCheckpoint: "SELECT      *
+                              FROM      COMMITS
+                              WHERE     CHECKPOINT_NUMBER > ?
+                              ORDER BY  CHECKPOINT_NUMBER"
+
+    commitsFromBucketAndCheckpoint: "SELECT     *
+                                      FROM      COMMITS
+                                      WHERE     BUCKET_ID = ?
+                                      AND       CHECKPOINT_NUMBER > ?
+                                      ORDER BY  CHECKPOINT_NUMBER"
+    undispatchedCommits: "SELECT     *
+                           FROM      COMMITS
+                           WHERE     DISPATCHED = 0
+                           ORDER BY  CHECKPOINT_NUMBER"
+
+    markCommitAsDispatched: "UPDATE   COMMITS
+                                SET   DISPATCHED = 1
+                                WHERE BUCKET_ID=?
+                                AND   STREAM_ID=?
+                                AND   COMMIT_SEQUENCE=?"
+
+    purgeStorage: "TRUNCATE TABLE COMMITS; TRUNCATE TABLE SNAPSHOTS"
+
+    purgeBucket: "DELETE FROM COMMITS WHERE BUCKET_ID=?; DELETE FROM SNAPSHOTS WHERE BUCKET_ID=?"
+
+    deleteStream: "DELETE FROM SNAPSHOTS WHERE BUCKET_ID=? AND STREAM_ID=?; DELETE FROM COMMITS WHERE BUCKET_ID=? AND STREAM_ID=?"
+
+    currentCommitSequence: "SELECT    MAX(COMMIT_SEQUENCE)
+                              FROM    COMMITS
+                              WHERE   BUCKET_ID = ?
+                              AND     STREAM_ID = ?
+                              AND     STREAM_REVISION > ?
+                              AND     STREAM_REVISION < ?"
+
+    currentStreamRevision: "SELECT    SUM(STREAM_REVISON - ITEMS + 1)
+                              FROM    COMMITS
+                              WHERE   BUCKET_ID = ?
+                              AND     STREAM_ID = ?
+                              AND     STREAM_REVISION > ?
+                              AND     STREAM_REVISION < ?"
+
+    streamsRequiringSnapshots:  "SELECT             C.BUCKET_ID, C.STREAM_ID, C.STREAM_ID_ORIGINAL, MAX(C.STREAM_REVISION) AS STREAM_REVISION,
+                                                    MAX(COALESCE(S.STREAM_REVISION, 0)) AS SNAPSHOT_REVISION
+                                 FROM               COMMITS AS C
+                                  LEFT OUTER JOIN   SNAPSHOTS AS S
+                                   ON               C.BUCKET_ID =  ?
+                                  AND               C.STREAM_ID = S.STREAM_ID
+                                  AND               C.STREAM_REVISION >= S.STREAM_REVISION
+                                GROUP BY            C.STREAM_ID, C.BUCKET_ID, C.STREAM_ID_ORIGINAL
+                               HAVING               MAX(C.STREAM_REVISION) >= MAX(COALESCE(S.STREAM_REVISION, 0)) + ?
+                                ORDER BY            C.STREAM_ID"
+
+
+spring:
+  datasource:
+    platform: mysql

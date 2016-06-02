@@ -25,6 +25,7 @@
 package io.igx.eventstore;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -67,7 +68,7 @@ public interface EventStream {
 	 *
 	 * @return a flux of events which have been successfully persisted to durable storage.
 	 */
-	Collection<EventMessage<?>> getCommitedEvents();
+	List<EventMessage<?>> getCommitedEvents();
 
 	/**
 	 *
@@ -79,7 +80,7 @@ public interface EventStream {
 	 *
 	 * @return a flux of yet-to-be-committed events that have not yet been persisted to durable storage.
 	 */
-	Collection<EventMessage> getUncommitedEvents();
+	List<EventMessage> getUncommitedEvents();
 
 	/**
 	 *

@@ -1,0 +1,10 @@
+sql:
+  commands:
+    commitsFromStartingRevision: "SELECT *
+                                    FROM COMMITS
+                                   WHERE BUCKET_ID = ?
+                                     AND STREAM_ID = ?
+                                     AND STREAM_REVISION >= ?
+                                     AND (STREAM_REVISION - ITEMS) < ?
+                                     AND COMMIT_SEQUENCE > ?
+                                   ORDER BY COMMIT_SEQUENCE LIMIT ?;"

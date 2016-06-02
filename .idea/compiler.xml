@@ -21,12 +21,36 @@
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
         <processorPath useClasspath="true" />
+        <module name="persistence-jpa" />
+      </profile>
+      <profile default="false" name="Annotation profile for jeventstore" enabled="true">
+        <sourceOutputDir name="target/generated-sources/annotations" />
+        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <processorPath useClasspath="true" />
         <module name="jeventstore" />
+      </profile>
+      <profile default="false" name="Annotation profile for sample" enabled="true">
+        <sourceOutputDir name="target/generated-sources/annotations" />
+        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <processorPath useClasspath="true" />
+        <module name="sample" />
+      </profile>
+      <profile default="false" name="Annotation profile for persistence-jdbc" enabled="true">
+        <sourceOutputDir name="target/generated-sources/annotations" />
+        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <processorPath useClasspath="true" />
+        <module name="persistence-jdbc" />
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel target="1.8">
       <module name="eventstore" target="1.5" />
-      <module name="jeventstore" target="1.5" />
+      <module name="jeventstore" target="1.8" />
+      <module name="persistence-jdbc" target="1.8" />
+      <module name="persistence-jpa" target="1.5" />
+      <module name="sample" target="1.8" />
     </bytecodeTargetLevel>
   </component>
 </project>

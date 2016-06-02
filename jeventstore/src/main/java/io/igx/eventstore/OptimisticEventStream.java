@@ -29,12 +29,14 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 import io.igx.eventstore.exceptions.ConcurrencyException;
 import io.igx.eventstore.exceptions.DuplicateCommitException;
 import io.igx.eventstore.exceptions.StreamNotFoundException;
+import io.igx.eventstore.persistence.PersistentStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,19 +45,19 @@ import org.slf4j.LoggerFactory;
  */
 public final class OptimisticEventStream implements EventStream{
 
-	private final Collection<EventMessage<?>> committed;
-	private final Collection<UUID> identifiers;
-	private final Collection<EventMessage> events;
-	private final CommitEvent persistence;
+	private final List<EventMessage<?>> committed;
+	private final List<UUID> identifiers;
+	private final List<EventMessage> events;
+	private final PersistentStream persistence;
 	private final Map<String,Object> commitedHeaders;
 	private final Map<String,Object> headers;
 	private Logger logger = LoggerFactory.getLogger(OptimisticEventStream.class);
 	private String bucketId;
 	private String streamId;
-	private Integer streamRevision;
-	private Integer commitSequence;
+	private Integer streamRevision = 0;
+	private Integer commitSequence = 0;
 
-	public OptimisticEventStream(String bucketId, String streamId, CommitEvent persistence){
+	public OptimisticEventStream(String bucketId, String streamId, PersistentStream persistence){
 
 		this.bucketId = bucketId;
 		this.streamId = streamId;
@@ -67,19 +69,19 @@ public final class OptimisticEventStream implements EventStream{
 		this.headers = new HashMap<String, Object>();
 	}
 
-	public OptimisticEventStream(String bucketId, String streamId, CommitEvent persistence, int minRevision, int maxRevision){
+	public OptimisticEventStream(String bucketId, String streamId, PersistentStream persistence, int minRevision, int maxRevision){
 		this(bucketId,streamId,persistence);
-		Collection<Commit> commits =persistence.from(bucketId,streamId,minRevision,maxRevision);
-		populateStream(minRevision,maxRevision,commits);
+		this.commitSequence = persistence.getCurrentCommitSequence(bucketId,streamId,minRevision,maxRevision);
+		this.streamRevision = persistence.getCurrentStreamRevision(bucketId,streamId,minRevision,maxRevision);
+
 		if( minRevision > 0 && committed.size() == 0)
 			throw new StreamNotFoundException();
 	}
 
-	public OptimisticEventStream(Snapshot snapshot, CommitEvent persistence, int maxRevision){
+	public OptimisticEventStream(Snapshot snapshot, PersistentStream persistence, int maxRevision){
 		this(snapshot.getBucketId(),snapshot.getStreamId(),persistence);
-		Collection<Commit> commits = persistence.from(snapshot.getBucketId(),snapshot.getStreamId(),snapshot.getStreamRevision(),maxRevision);
-		populateStream(snapshot.getStreamRevision()+1,maxRevision,commits);
-		streamRevision = snapshot.getStreamRevision() + committed.size();
+		this.commitSequence = persistence.getCurrentCommitSequence(snapshot.getBucketId(),snapshot.getStreamId(),snapshot.getStreamRevision(),maxRevision);
+		this.streamRevision = persistence.getCurrentStreamRevision(snapshot.getBucketId(),snapshot.getBucketId(),snapshot.getStreamRevision(),maxRevision);
 	}
 
 
@@ -99,16 +101,16 @@ public final class OptimisticEventStream implements EventStream{
 		return commitSequence;
 	}
 
-	public Collection<EventMessage<?>> getCommitedEvents() {
-		return Collections.unmodifiableCollection(committed);
+	public List<EventMessage<?>> getCommitedEvents() {
+		return Collections.unmodifiableList(committed);
 	}
 
 	public Map<String, Object> getCommitedHeaders() {
 		return commitedHeaders;
 	}
 
-	public Collection<EventMessage> getUncommitedEvents() {
-		return Collections.unmodifiableCollection(events);
+	public List<EventMessage> getUncommitedEvents() {
+		return Collections.unmodifiableList(events);
 	}
 
 	public Map<String, Object> getUncommitedHeaders() {
@@ -133,8 +135,8 @@ public final class OptimisticEventStream implements EventStream{
 			persistChanges(guid);
 		} catch (ConcurrencyException ex){
 			logger.info("The underlying stream {} has changed since the last known commit, refreshing the stream.",streamId);
-			Collection<Commit> commits = persistence.from(bucketId,streamId, streamRevision +1,Integer.MAX_VALUE);
-			populateStream(streamRevision + 1,Integer.MAX_VALUE,commits);
+			this.commitSequence = persistence.getCurrentCommitSequence(bucketId,streamId,streamRevision+1,Integer.MAX_VALUE);
+			this.streamRevision = persistence.getCurrentStreamRevision(bucketId,streamId,streamRevision+1,Integer.MAX_VALUE);
 			throw ex;
 		}
 
@@ -154,6 +156,14 @@ public final class OptimisticEventStream implements EventStream{
 		clearChanges();
 	}
 
+	/**
+	 * @deprecated: Instead of going for an eager approach, an Stream is now lazy, we won't load commits into memory.
+	 * Duplicates can now only happen during a commit to the backing store
+	 *
+	 * @param minRevision
+	 * @param maxRevision
+	 * @param commits
+	 */
 	private void populateStream(int minRevision, int maxRevision, Collection<Commit> commits){
 		for(Commit commit : commits){
 			logger.debug("Adding commit {} with {} events to stream {}",commit.getGuid(),commit.getEvents().size(),streamId);
@@ -185,7 +195,7 @@ public final class OptimisticEventStream implements EventStream{
 				logger.debug("Ignoring some events on commit {} of stream {} because they starting before revision {}.", commit.getGuid(), streamId, maxRevision);
 				continue;
 			}
-			events.add(event);
+			committed.add(event);
 			streamRevision = currentRevision +1;
 		}
 	}
@@ -197,7 +207,7 @@ public final class OptimisticEventStream implements EventStream{
 				streamRevision + events.size(),
 				guid,
 				commitSequence+1,
-				LocalDateTime.now(),
+				System.currentTimeMillis(),
 				headers,
 				events);
 		return attempt;

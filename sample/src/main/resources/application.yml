@@ -1,0 +1,8 @@
+spring:
+  profiles:
+    active: mysql
+  datasource:
+    url: jdbc:mysql://localhost/eventstore
+    username: root
+    password:
+

@@ -25,6 +25,8 @@
 package io.igx.eventstore.persistence;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.List;
 
 import io.igx.eventstore.Checkpoint;
 import io.igx.eventstore.Commit;
@@ -35,6 +37,7 @@ import reactor.core.publisher.Flux;
 /**
  * @author Vinicius Carvalho
  * Renamed from https://github.com/NEventStore/NEventStore/blob/master/src/NEventStore/Persistence/IPersistStreams.cs
+ *
  * Indicates the ability to adapt the underlying persistence infrastructure to behave like a stream of events.
  * Instances of this class must be designed to be multi-thread safe such that they can be shared between threads.
  */
@@ -136,5 +139,26 @@ public interface PersistentStream extends CommitEvent, SnapshotAccessor{
 	 * @param streamId The stream Id of the stream that is to be deleted.
 	 */
 	void deleteStream(String bucketId, String streamId);
+
+	/**
+	 * Finds the current maximum revision a stream is located at.
+	 * This method is not found in the .net version
+	 * @param bucketId
+	 * @param streamId
+	 * @param minRevision
+	 * @param maxRevision
+	 * @return
+	 */
+	Integer getCurrentStreamRevision(String bucketId, String streamId, Integer minRevision, Integer maxRevision);
+
+	/**
+	 *
+	 * @param bucketId
+	 * @param streamId
+	 * @param minRevision
+	 * @param maxRevision
+	 * @return
+	 */
+	Integer getCurrentCommitSequence(String bucketId, String streamId, Integer minRevision, Integer maxRevision);
 
 }

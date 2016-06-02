@@ -25,10 +25,12 @@
 package io.igx.eventstore;
 
 import java.util.Collection;
+import java.util.List;
 
 import io.igx.eventstore.exceptions.ConcurrencyException;
 import io.igx.eventstore.persistence.StorageException;
 import io.igx.eventstore.persistence.StorageUnavailableException;
+import reactor.core.publisher.Flux;
 
 /**
  * @author Vinicius Carvalho
@@ -50,7 +52,7 @@ public interface CommitEvent {
 	 * @throws StorageUnavailableException
 	 * @return A series of committed events from the stream specified sorted in ascending order.
 	 */
-	Collection<Commit> from(String bucketId, String streamId, int minRevision, int maxRevision);
+	Flux<Commit> from(String bucketId, String streamId, int minRevision, int maxRevision);
 
 	/**
 	 * Writes the to-be-commited events provided to the underlying persistence mechanism.
@@ -62,4 +64,6 @@ public interface CommitEvent {
 	 *
 	 */
 	Commit commit(CommitAttempt attempt);
+
+
 }

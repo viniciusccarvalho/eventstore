@@ -70,7 +70,7 @@ public interface Commit {
 	 *
 	 * @return the point in time at which the commit was persisted.
 	 */
-	LocalDateTime getCommitStamp();
+	Long getCommitStamp();
 
 	/**
 	 *

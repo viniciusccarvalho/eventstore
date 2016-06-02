@@ -25,15 +25,17 @@
 package io.igx.eventstore;
 
 import java.util.Collection;
+import java.util.List;
 
 import io.igx.eventstore.persistence.PersistentStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.publisher.Flux;
 
 /**
  * @author Vinicius Carvalho
  */
-public abstract class OptmisticEventStore implements EventStore, CommitEvent{
+public  class OptmisticEventStore implements EventStore, CommitEvent{
 
 	protected final PersistentStream persistentStream;
 	protected final Collection<PipelineHook> hooks;
@@ -47,7 +49,7 @@ public abstract class OptmisticEventStore implements EventStore, CommitEvent{
 		//TODO how are we going to deal with pipeline hooks and decorator?
 	}
 
-	public Collection<Commit> from(String bucketId, String streamId, int minRevision, int maxRevision) {
+	public Flux<Commit> from(String bucketId, String streamId, int minRevision, int maxRevision) {
 		return persistentStream.from(bucketId,streamId,minRevision,maxRevision);
 	}
 
@@ -68,15 +70,20 @@ public abstract class OptmisticEventStore implements EventStore, CommitEvent{
 		return commit;
 	}
 
+	@Override
+	public PersistentStream getDelegate() {
+		return persistentStream;
+	}
+
 	public EventStream create(String bucketId, String streamId) {
 		logger.info("Creating stream '{}' in bucket '{}'.",streamId,bucketId);
-		return new OptimisticEventStream(bucketId,streamId,this);
+		return new OptimisticEventStream(bucketId,streamId,this.persistentStream);
 	}
 
 	public EventStream open(String bucketId, String streamId, int minRevision, int maxRevision) {
 		maxRevision = maxRevision <= 0 ? Integer.MAX_VALUE : maxRevision;
 		logger.debug("Opening stream '{}' from bucket '{}' between revisions {} and {}.", streamId, bucketId, minRevision, maxRevision);
-		return new OptimisticEventStream(bucketId, streamId, this, minRevision, maxRevision);
+		return new OptimisticEventStream(bucketId, streamId, this.persistentStream, minRevision, maxRevision);
 	}
 
 	public EventStream open(Snapshot snapshot, int maxRevision) {
@@ -85,6 +92,11 @@ public abstract class OptmisticEventStore implements EventStore, CommitEvent{
 		}
 		logger.debug("Opening stream '{}' with snapshot at {} up to revision {}.", snapshot.getStreamId(), snapshot.getStreamRevision(), maxRevision);
 		maxRevision = maxRevision <= 0 ? Integer.MAX_VALUE : maxRevision;
-		return new OptimisticEventStream(snapshot, this, maxRevision);
+		return new OptimisticEventStream(snapshot, this.persistentStream, maxRevision);
+	}
+
+	@Override
+	public void startDispatchScheduler() {
+
 	}
 }

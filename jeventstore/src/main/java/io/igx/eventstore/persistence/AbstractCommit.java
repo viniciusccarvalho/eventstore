@@ -42,12 +42,12 @@ public class AbstractCommit implements Commit {
 	final Integer streamRevision;
 	final UUID guid;
 	final Integer commitSequence;
-	final LocalDateTime commitStamp;
+	final Long commitStamp;
 	final Map<String,Object> headers;
 	final Collection<EventMessage> events;
 	final String checkpointToken;
 
-	public AbstractCommit(String streamId, String bucketId, Integer streamRevision, UUID guid, Integer commitSequence, LocalDateTime commitStamp, Map<String, Object> headers, Collection<EventMessage> events, String checkpointToken) {
+	public AbstractCommit(String streamId, String bucketId, Integer streamRevision, UUID guid, Integer commitSequence, Long commitStamp,String checkpointToken, Map<String, Object> headers, Collection<EventMessage> events) {
 		this.streamId = streamId;
 		this.bucketId = bucketId;
 		this.streamRevision = streamRevision;
@@ -79,7 +79,7 @@ public class AbstractCommit implements Commit {
 		return commitSequence;
 	}
 
-	public LocalDateTime getCommitStamp() {
+	public Long getCommitStamp() {
 		return commitStamp;
 	}
 
