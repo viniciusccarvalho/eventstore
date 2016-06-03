@@ -8,6 +8,3 @@ spring:
     password:
 
 
-logging:
-  level:
-    org.springframework.jdbc.core: TRACE

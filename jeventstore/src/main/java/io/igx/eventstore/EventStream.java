@@ -56,13 +56,13 @@ public interface EventStream {
 	 *
 	 * @return the value which indiciates the most recent committed revision of event stream.
 	 */
-	Integer getStreamRevision();
+	Long getStreamRevision();
 
 	/**
 	 *
 	 * @return the value which indicates the most recent committed sequence identifier of the event stream.
 	 */
-	Integer getCommitSequence();
+	Long getCommitSequence();
 
 	/**
 	 *

@@ -24,6 +24,7 @@
 
 package io.igx.eventstore.persistence.jdbc;
 
+import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -42,7 +43,9 @@ import io.igx.eventstore.persistence.jdbc.properties.SQLCommands;
 import reactor.core.publisher.Flux;
 
 import org.springframework.dao.DataAccessException;
+import org.springframework.jdbc.core.ArgumentPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.PreparedStatementCreator;
 import org.springframework.jdbc.core.ResultSetExtractor;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.support.AbstractLobCreatingPreparedStatementCallback;
@@ -58,7 +61,6 @@ public class JDBCPersistentStream implements PersistentStream {
 
 
 	private JdbcTemplate template;
-	private NamedParameterJdbcTemplate namedTemplate;
 	private SQLCommands sqlCommands;
 	private Serializer serializer;
 	private LobHandler lobHandler;
@@ -68,16 +70,9 @@ public class JDBCPersistentStream implements PersistentStream {
 		this.serializer = serializer;
 		this.sqlCommands = sqlCommands;
 		this.lobHandler = lobHandler;
-		this.namedTemplate = new NamedParameterJdbcTemplate(template);
 	}
 
-	public boolean isDisposed() {
-		return false;
-	}
 
-	public void initialize() {
-
-	}
 
 	public Flux<Commit> from(String bucketId, LocalDateTime start) {
 		return query(sqlCommands.getCommitsFromInstant(), new Object[]{bucketId,start.atZone(ZoneId.systemDefault()).toInstant().getEpochSecond()});
@@ -95,7 +90,7 @@ public class JDBCPersistentStream implements PersistentStream {
 		return query(sqlCommands.getCommitsFromToInstant(),new Object[]{bucketId,start.atZone(ZoneId.systemDefault()).toInstant().getEpochSecond(),stop.atZone(ZoneId.systemDefault()).toInstant().getEpochSecond()});
 	}
 
-	public Flux<Commit> from(String bucketId, String streamId, int minRevision, int maxRevision) {
+	public Flux<Commit> from(String bucketId, String streamId, Long minRevision, Long maxRevision) {
 		return query(sqlCommands.getCommitsFromStartingRevision(),
 				new Object[]{bucketId,streamId,minRevision,maxRevision,0});
 	}
@@ -135,13 +130,13 @@ public class JDBCPersistentStream implements PersistentStream {
 	}
 
 	@Override
-	public Integer getCurrentStreamRevision(String bucketId, String streamId, Integer minRevision, Integer maxRevision) {
-		return template.queryForObject(sqlCommands.getCurrentStreamRevision(),new Object[]{bucketId,streamId,minRevision,maxRevision},Integer.class);
+	public Long getCurrentStreamRevision(String bucketId, String streamId, Long minRevision, Long maxRevision) {
+		return template.queryForObject(sqlCommands.getCurrentStreamRevision(),new Object[]{bucketId,streamId,minRevision,maxRevision},Long.class);
 	}
 
 	@Override
-	public Integer getCurrentCommitSequence(String bucketId, String streamId, Integer minRevision, Integer maxRevision) {
-		return template.queryForObject(sqlCommands.getCurrentCommitSequence(),new Object[]{bucketId,streamId,maxRevision,maxRevision},Integer.class);
+	public Long getCurrentCommitSequence(String bucketId, String streamId, Long minRevision, Long maxRevision) {
+		return template.queryForObject(sqlCommands.getCurrentCommitSequence(),new Object[]{bucketId,streamId,minRevision,maxRevision},Long.class);
 	}
 
 
@@ -161,14 +156,14 @@ public class JDBCPersistentStream implements PersistentStream {
 			protected void setValues(PreparedStatement ps, LobCreator lobCreator) throws SQLException, DataAccessException {
 				ps.setString(1,snapshot.getBucketId());
 				ps.setString(2,snapshot.getStreamId());
-				ps.setInt(3,snapshot.getStreamRevision());
+				ps.setLong(3,snapshot.getStreamRevision());
 				lobCreator.setBlobAsBytes(ps,4,serializer.serialize(snapshot.getPayload()));
 				ps.setString(5,snapshot.getBucketId());
 				ps.setString(6,snapshot.getStreamId());
-				ps.setInt(7,snapshot.getStreamRevision());
+				ps.setLong(7,snapshot.getStreamRevision());
 				ps.setString(8,snapshot.getBucketId());
 				ps.setString(9,snapshot.getStreamId());
-				ps.setInt(10,snapshot.getStreamRevision());
+				ps.setLong(10,snapshot.getStreamRevision());
 
 			}
 		}) > 0;
@@ -202,8 +197,7 @@ public class JDBCPersistentStream implements PersistentStream {
 	private Flux<Commit> query(String sql, Object[] arguments){
 		return Flux.create(subscriber -> {
 			try{
-
-				template.query(sql, arguments, new ResultSetExtractor<Object>() {
+				template.query(new StreamPreparedStatementCreator(sql),new ArgumentPreparedStatementSetter(arguments), new ResultSetExtractor<Object>() {
 					@Override
 					public Object extractData(ResultSet rs) throws SQLException, DataAccessException {
 						int row = 0;
@@ -234,8 +228,8 @@ public class JDBCPersistentStream implements PersistentStream {
 				ps.setString(2,attempt.getStreamId());
 				ps.setString(3,attempt.getStreamId());
 				ps.setString(4,attempt.getGuid().toString());
-				ps.setInt(5,attempt.getCommitSequence());
-				ps.setInt(6,attempt.getStreamRevision());
+				ps.setLong(5,attempt.getCommitSequence());
+				ps.setLong(6,attempt.getStreamRevision());
 				ps.setInt(7,attempt.getEvents().size());
 				ps.setLong(8, attempt.getCommitStamp());
 				lobCreator.setBlobAsBytes(ps,9,serializer.serialize(attempt.getHeaders()));
@@ -252,5 +246,21 @@ public class JDBCPersistentStream implements PersistentStream {
 				keyHolder.getKey().toString(),
 				attempt.getHeaders(),
 				attempt.getEvents());
+	}
+
+	private static class StreamPreparedStatementCreator implements PreparedStatementCreator {
+
+		private String sql;
+
+		public StreamPreparedStatementCreator(String sql) {
+			this.sql = sql;
+		}
+
+		@Override
+		public PreparedStatement createPreparedStatement(Connection con) throws SQLException {
+			PreparedStatement ps = con.prepareStatement(sql,ResultSet.TYPE_FORWARD_ONLY,ResultSet.CONCUR_READ_ONLY);
+			ps.setFetchSize(Integer.MIN_VALUE);
+			return ps;
+		}
 	}
 }

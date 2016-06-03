@@ -52,7 +52,7 @@ public interface Commit {
 	 *
 	 * @return  the value which indicates the revision of the most recent event in the stream to which this commit applies.
 	 */
-	Integer getStreamRevision();
+	Long getStreamRevision();
 
 	/**
 	 *
@@ -64,7 +64,7 @@ public interface Commit {
 	 *
 	 * @return the value which indicates the sequence (or position) in the stream to which this commit applies.
 	 */
-	Integer getCommitSequence();
+	Long getCommitSequence();
 
 	/**
 	 *

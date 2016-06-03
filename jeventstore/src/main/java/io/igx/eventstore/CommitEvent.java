@@ -52,7 +52,7 @@ public interface CommitEvent {
 	 * @throws StorageUnavailableException
 	 * @return A series of committed events from the stream specified sorted in ascending order.
 	 */
-	Flux<Commit> from(String bucketId, String streamId, int minRevision, int maxRevision);
+	Flux<Commit> from(String bucketId, String streamId, Long minRevision, Long maxRevision);
 
 	/**
 	 * Writes the to-be-commited events provided to the underlying persistence mechanism.

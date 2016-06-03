@@ -24,7 +24,9 @@
 
 package io.igx.eventstore.persistence.jdbc;
 
+import java.time.LocalDateTime;
 import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 
@@ -35,6 +37,7 @@ import io.igx.eventstore.CommitAttempt;
 import io.igx.eventstore.EventMessage;
 import io.igx.eventstore.Snapshot;
 import io.igx.eventstore.persistence.BaseSnapshot;
+import io.igx.eventstore.persistence.StreamHead;
 import io.igx.eventstore.serializers.Serializer;
 import org.junit.Assert;
 import org.junit.Before;
@@ -63,14 +66,11 @@ public class JDBCPersistentStreamTests {
 		persistentStream.purge();
 	}
 
-	@Autowired
-	private Serializer serializer;
-
 
 
 	@Test
 	public void commit(){
-		CommitAttempt attempt = new CommitAttempt("Account","1",1, UUID.randomUUID(),1,System.currentTimeMillis(), Collections.emptyMap(),Collections.singletonList(new EventMessage(new AccountCreatedEvent(1,1000.0))));
+		CommitAttempt attempt = new CommitAttempt("Account","1",1L, UUID.randomUUID(),1L,System.currentTimeMillis(), Collections.emptyMap(),Collections.singletonList(new EventMessage(new AccountCreatedEvent(1,1000.0))));
 		Commit commit = persistentStream.commit(attempt);
 		Flux<Commit> commits = persistentStream.from(commit.getBucketId(),commit.getStreamId(),commit.getStreamRevision(),commit.getStreamRevision()+1);
 		int total = commits.toList().get().size();
@@ -78,10 +78,24 @@ public class JDBCPersistentStreamTests {
 	}
 
 	@Test
-	public void multipleCommits(){
-		CommitAttempt attempt = new CommitAttempt("Account","1",1, UUID.randomUUID(),1,System.currentTimeMillis(), Collections.emptyMap(),Collections.singletonList(new EventMessage(new AccountCreatedEvent(1,1000.0))));
+	public void from() throws Exception{
+		CommitAttempt attempt = new CommitAttempt("Account","1",1L, UUID.randomUUID(),1L,System.currentTimeMillis(), Collections.emptyMap(),Collections.singletonList(new EventMessage(new AccountCreatedEvent(1,1000.0))));
 		Commit commit = persistentStream.commit(attempt);
-		CommitAttempt attempt2 = new CommitAttempt("Account","1",1, UUID.randomUUID(),1,System.currentTimeMillis(), Collections.emptyMap(),Collections.singletonList(new EventMessage(new FundsTransferedEvent(-100.0))));
+		CommitAttempt attempt2 = new CommitAttempt("Account","1",1L, UUID.randomUUID(),1L,System.currentTimeMillis(), Collections.emptyMap(),Collections.singletonList(new EventMessage(new FundsTransferedEvent(-100.0))));
+		persistentStream.commit(attempt2);
+		Assert.assertTrue(persistentStream.from("Account",LocalDateTime.MIN).toList().get().size() > 0);
+		Assert.assertTrue(persistentStream.from("Account",LocalDateTime.MIN,LocalDateTime.MAX).toList().get().size() > 0);
+		Assert.assertTrue(persistentStream.from("Account","1",Long.MIN_VALUE,Long.MAX_VALUE).toList().get().size() > 0);
+		Assert.assertTrue(persistentStream.from(commit.getCheckpointToken()).toList().get().size() > 0);
+		Assert.assertTrue(persistentStream.from("Account",commit.getCheckpointToken()).toList().get().size() > 0);
+		Assert.assertTrue(persistentStream.from("Account",LocalDateTime.MIN).toList().get().size() > 0);
+	}
+
+	@Test
+	public void multipleCommits(){
+		CommitAttempt attempt = new CommitAttempt("Account","1",1L, UUID.randomUUID(),1L,System.currentTimeMillis(), Collections.emptyMap(),Collections.singletonList(new EventMessage(new AccountCreatedEvent(1,1000.0))));
+		Commit commit = persistentStream.commit(attempt);
+		CommitAttempt attempt2 = new CommitAttempt("Account","1",1L, UUID.randomUUID(),1L,System.currentTimeMillis(), Collections.emptyMap(),Collections.singletonList(new EventMessage(new FundsTransferedEvent(-100.0))));
 		persistentStream.commit(attempt2);
 		Flux<Commit> commits = persistentStream.from(commit.getBucketId(),commit.getStreamId(),commit.getStreamRevision(),commit.getStreamRevision()+1);
 		int total = commits.toList().get().size();
@@ -90,7 +104,7 @@ public class JDBCPersistentStreamTests {
 
 	@Test
 	public void undispatched() throws Exception{
-		CommitAttempt attempt = new CommitAttempt("Account","1",1, UUID.randomUUID(),1,System.currentTimeMillis(), Collections.emptyMap(),Collections.singletonList(new EventMessage(new AccountCreatedEvent(1,1000.0))));
+		CommitAttempt attempt = new CommitAttempt("Account","1",1L, UUID.randomUUID(),1L,System.currentTimeMillis(), Collections.emptyMap(),Collections.singletonList(new EventMessage(new AccountCreatedEvent(1,1000.0))));
 		Commit commit = persistentStream.commit(attempt);
 		Flux<Commit> commits = persistentStream.getUndispatchedCommits();
 		int total = commits.toList().get().size();
@@ -99,7 +113,7 @@ public class JDBCPersistentStreamTests {
 
 	@Test
 	public void markDispatched() throws Exception{
-		CommitAttempt attempt = new CommitAttempt("Account","1",1, UUID.randomUUID(),1,System.currentTimeMillis(), Collections.emptyMap(),Collections.singletonList(new EventMessage(new AccountCreatedEvent(1,1000.0))));
+		CommitAttempt attempt = new CommitAttempt("Account","1",1L, UUID.randomUUID(),1L,System.currentTimeMillis(), Collections.emptyMap(),Collections.singletonList(new EventMessage(new AccountCreatedEvent(1,1000.0))));
 		Commit commit = persistentStream.commit(attempt);
 		persistentStream.markCommitAsDispatched(commit);
 		Flux<Commit> commits = persistentStream.getUndispatchedCommits();
@@ -109,11 +123,11 @@ public class JDBCPersistentStreamTests {
 
 	@Test
 	public void snapshot() throws Exception {
-		CommitAttempt attempt = new CommitAttempt("Account","1",1, UUID.randomUUID(),1,System.currentTimeMillis(), Collections.emptyMap(),Collections.singletonList(new EventMessage(new AccountCreatedEvent(1,1000.0))));
+		CommitAttempt attempt = new CommitAttempt("Account","1",1L, UUID.randomUUID(),1L,System.currentTimeMillis(), Collections.emptyMap(),Collections.singletonList(new EventMessage(new AccountCreatedEvent(1,1000.0))));
 		Commit commit = persistentStream.commit(attempt);
-		CommitAttempt attempt2 = new CommitAttempt("Account","1",1, UUID.randomUUID(),2,System.currentTimeMillis(), Collections.emptyMap(),Collections.singletonList(new EventMessage(new FundsTransferedEvent(-100.0))));
+		CommitAttempt attempt2 = new CommitAttempt("Account","1",1L, UUID.randomUUID(),2L,System.currentTimeMillis(), Collections.emptyMap(),Collections.singletonList(new EventMessage(new FundsTransferedEvent(-100.0))));
 		persistentStream.commit(attempt2);
-		Flux<Commit> commits = persistentStream.from(attempt.getBucketId(),attempt.getStreamId(),Integer.MIN_VALUE,Integer.MAX_VALUE);
+		Flux<Commit> commits = persistentStream.from(attempt.getBucketId(),attempt.getStreamId(),Long.MIN_VALUE,Long.MAX_VALUE);
 		final AccountAggregate accountAggregate = new AccountAggregate();
 		final CountDownLatch latch = new CountDownLatch(2);
 		commits.flatMap(c ->{return Flux.fromIterable(c.getEvents());}).subscribe(Subscribers.consumer(eventMessage -> {
@@ -122,10 +136,67 @@ public class JDBCPersistentStreamTests {
 		}));
 		latch.await();
 		Assert.assertTrue(accountAggregate.getAmount() == 900);
-		Snapshot<AccountAggregate> snapshot = new BaseSnapshot<>(attempt.getBucketId(),attempt.getStreamId(),2,accountAggregate);
+		Snapshot<AccountAggregate> snapshot = new BaseSnapshot<>(attempt.getBucketId(),attempt.getStreamId(),2L,accountAggregate);
 		boolean persisted = persistentStream.add(snapshot);
+		Snapshot<AccountAggregate> fromStorage = persistentStream.getSnapshot("Account","1",Integer.MAX_VALUE,AccountAggregate.class);
 		Assert.assertTrue(persisted);
-}
+		Assert.assertEquals(accountAggregate.getAmount(),fromStorage.getPayload().getAmount());
+	}
+
+	@Test
+	public void getStreamsToSnapshot() throws Exception {
+		CommitAttempt attempt = new CommitAttempt("Account","1",1L, UUID.randomUUID(),1L,System.currentTimeMillis(), Collections.emptyMap(),Collections.singletonList(new EventMessage(new AccountCreatedEvent(1,1000.0))));
+		Commit commit = persistentStream.commit(attempt);
+		CommitAttempt attempt2 = new CommitAttempt("Account","1",1L, UUID.randomUUID(),1L,System.currentTimeMillis(), Collections.emptyMap(),Collections.singletonList(new EventMessage(new FundsTransferedEvent(-100.0))));
+		persistentStream.commit(attempt2);
+		List<StreamHead> streamsToSnapshot = persistentStream.getStreamsToSnapshot("Account",1).toList().get();
+		Assert.assertTrue(streamsToSnapshot.size() > 0);
+	}
+
+	@Test
+	public void getCurrentRevision() throws Exception {
+		CommitAttempt attempt = new CommitAttempt("Account","1",1L, UUID.randomUUID(),1L,System.currentTimeMillis(), Collections.emptyMap(),Collections.singletonList(new EventMessage(new AccountCreatedEvent(1,1000.0))));
+		Commit commit = persistentStream.commit(attempt);
+		long currentRevision = persistentStream.getCurrentStreamRevision(commit.getBucketId(),commit.getStreamId(),Long.MIN_VALUE,Long.MAX_VALUE);
+		Assert.assertEquals(commit.getStreamRevision().intValue(),currentRevision);
+	}
+
+	@Test
+	public void getCurrentCommitSequence() throws Exception {
+		CommitAttempt attempt = new CommitAttempt("Account","1",1L, UUID.randomUUID(),1L,System.currentTimeMillis(), Collections.emptyMap(),Collections.singletonList(new EventMessage(new AccountCreatedEvent(1,1000.0))));
+		Commit commit = persistentStream.commit(attempt);
+		long currentSequence = persistentStream.getCurrentCommitSequence(commit.getBucketId(),commit.getStreamId(),Long.MIN_VALUE,Long.MAX_VALUE);
+		Assert.assertEquals(commit.getCommitSequence().intValue(),currentSequence);
+	}
+
+	@Test
+	public void deleteStream() throws Exception{
+		CommitAttempt attempt = new CommitAttempt("Account","1",1L, UUID.randomUUID(),1L,System.currentTimeMillis(), Collections.emptyMap(),Collections.singletonList(new EventMessage(new AccountCreatedEvent(1,1000.0))));
+		Commit commit = persistentStream.commit(attempt);
+		CommitAttempt attempt2 = new CommitAttempt("Account","1",1L, UUID.randomUUID(),1L,System.currentTimeMillis(), Collections.emptyMap(),Collections.singletonList(new EventMessage(new FundsTransferedEvent(-100.0))));
+		persistentStream.commit(attempt2);
+		persistentStream.deleteStream("Account","1");
+		Assert.assertTrue(persistentStream.from("Account", LocalDateTime.MIN).toList().get().size() == 0);
+	}
+
+	@Test
+	public void purge() throws Exception{
+		CommitAttempt attempt = new CommitAttempt("Account","1",1L, UUID.randomUUID(),1L,System.currentTimeMillis(), Collections.emptyMap(),Collections.singletonList(new EventMessage(new AccountCreatedEvent(1,1000.0))));
+		Commit commit = persistentStream.commit(attempt);
+		CommitAttempt attempt2 = new CommitAttempt("Sensor","1",1L, UUID.randomUUID(),1L,System.currentTimeMillis(), Collections.emptyMap(),Collections.singletonList(new EventMessage(new FundsTransferedEvent(-100.0))));
+		persistentStream.commit(attempt2);
+		persistentStream.purge("Sensor");
+		Assert.assertTrue(persistentStream.from("Account", LocalDateTime.MIN).toList().get().size() == 1);
+	}
+	@Test
+	public void purgeAll() throws Exception{
+		CommitAttempt attempt = new CommitAttempt("Account","1",1L, UUID.randomUUID(),1L,System.currentTimeMillis(), Collections.emptyMap(),Collections.singletonList(new EventMessage(new AccountCreatedEvent(1,1000.0))));
+		Commit commit = persistentStream.commit(attempt);
+		CommitAttempt attempt2 = new CommitAttempt("Account","1",1L, UUID.randomUUID(),1L,System.currentTimeMillis(), Collections.emptyMap(),Collections.singletonList(new EventMessage(new FundsTransferedEvent(-100.0))));
+		persistentStream.commit(attempt2);
+		persistentStream.purge();
+		Assert.assertTrue(persistentStream.from("Account", LocalDateTime.MIN).toList().get().size() == 0);
+	}
 
 	public static class AccountCreatedEvent{
 		Integer id;

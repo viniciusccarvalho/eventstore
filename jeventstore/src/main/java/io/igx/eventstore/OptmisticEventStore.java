@@ -49,7 +49,7 @@ public  class OptmisticEventStore implements EventStore, CommitEvent{
 		//TODO how are we going to deal with pipeline hooks and decorator?
 	}
 
-	public Flux<Commit> from(String bucketId, String streamId, int minRevision, int maxRevision) {
+	public Flux<Commit> from(String bucketId, String streamId, Long minRevision, Long maxRevision) {
 		return persistentStream.from(bucketId,streamId,minRevision,maxRevision);
 	}
 
@@ -80,13 +80,13 @@ public  class OptmisticEventStore implements EventStore, CommitEvent{
 		return new OptimisticEventStream(bucketId,streamId,this.persistentStream);
 	}
 
-	public EventStream open(String bucketId, String streamId, int minRevision, int maxRevision) {
+	public EventStream open(String bucketId, String streamId, Long minRevision, Long maxRevision) {
 		maxRevision = maxRevision <= 0 ? Integer.MAX_VALUE : maxRevision;
 		logger.debug("Opening stream '{}' from bucket '{}' between revisions {} and {}.", streamId, bucketId, minRevision, maxRevision);
 		return new OptimisticEventStream(bucketId, streamId, this.persistentStream, minRevision, maxRevision);
 	}
 
-	public EventStream open(Snapshot snapshot, int maxRevision) {
+	public EventStream open(Snapshot snapshot, Long maxRevision) {
 		if(snapshot == null){
 			throw new IllegalArgumentException("Snapshot can't be null");
 		}

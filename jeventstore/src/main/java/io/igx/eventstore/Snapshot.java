@@ -46,7 +46,7 @@ public interface Snapshot<T> {
 	 *
 	 * @return the position at which the snapshot applies.
 	 */
-	Integer getStreamRevision();
+	Long getStreamRevision();
 
 	/**
 	 *

@@ -37,15 +37,15 @@ public class CommitAttempt{
 
 	final String streamId;
 	final String bucketId;
-	final Integer streamRevision;
+	final Long streamRevision;
 	final UUID guid;
-	final Integer commitSequence;
+	final Long commitSequence;
 	final Long commitStamp;
 	final Map<String,Object> headers;
 	final Collection<EventMessage> events;
 
 
-	public CommitAttempt(String streamId, Integer streamRevision, UUID guid, Integer commitSequence, Long commitStamp, Map<String, Object> headers, Collection<EventMessage> events){
+	public CommitAttempt(String streamId, Long streamRevision, UUID guid, Long commitSequence, Long commitStamp, Map<String, Object> headers, Collection<EventMessage> events){
 		this(Bucket.DEFAULT,streamId,streamRevision,guid,commitSequence,commitStamp,headers,events);
 	}
 
@@ -60,7 +60,7 @@ public class CommitAttempt{
 	 * @param headers The metadata which provides additional, unstructured information about this commit.
 	 * @param events The collection of event messages to be committed as a single unit.
 	 */
-	public CommitAttempt(String bucketId, String streamId, Integer streamRevision, UUID guid, Integer commitSequence, Long commitStamp, Map<String, Object> headers, Collection<EventMessage> events) {
+	public CommitAttempt(String bucketId, String streamId, Long streamRevision, UUID guid, Long commitSequence, Long commitStamp, Map<String, Object> headers, Collection<EventMessage> events) {
 		this.streamId = streamId;
 		this.bucketId = bucketId;
 		this.streamRevision = streamRevision;
@@ -79,7 +79,7 @@ public class CommitAttempt{
 		return streamId;
 	}
 
-	public Integer getStreamRevision() {
+	public Long getStreamRevision() {
 		return streamRevision;
 	}
 
@@ -87,7 +87,7 @@ public class CommitAttempt{
 		return guid;
 	}
 
-	public Integer getCommitSequence() {
+	public Long getCommitSequence() {
 		return commitSequence;
 	}
 

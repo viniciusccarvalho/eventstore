@@ -59,7 +59,7 @@ sql:
                               AND     STREAM_REVISION > ?
                               AND     STREAM_REVISION < ?"
 
-    currentStreamRevision: "SELECT    SUM(STREAM_REVISON - ITEMS + 1)
+    currentStreamRevision: "SELECT    SUM(STREAM_REVISION - ITEMS + 1)
                               FROM    COMMITS
                               WHERE   BUCKET_ID = ?
                               AND     STREAM_ID = ?
@@ -94,6 +94,13 @@ sql:
                                  WHERE BUCKET_ID = ?
                                    AND STREAM_ID = ?
                                    AND STREAM_REVISION = ? )"
+    snapshot: "SELECT *
+                 FROM SNAPSHOTS
+                WHERE BUCKET_ID = ?
+                  AND STREAM_ID = ?
+                  AND STREAM_REVISION <= ?
+                ORDER BY STREAM_REVISION DESC
+                LIMIT 1;"
 
 spring:
   datasource:

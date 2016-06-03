@@ -33,10 +33,10 @@ public class BaseSnapshot<T> implements Snapshot<T>{
 
 	private final String bucketId;
 	private final String streamId;
-	private final Integer streamRevision;
+	private final Long streamRevision;
 	private final T payload;
 
-	public BaseSnapshot(String bucketId, String streamId, Integer streamRevision, T payload) {
+	public BaseSnapshot(String bucketId, String streamId, Long streamRevision, T payload) {
 		this.bucketId = bucketId;
 		this.streamId = streamId;
 		this.streamRevision = streamRevision;
@@ -54,7 +54,7 @@ public class BaseSnapshot<T> implements Snapshot<T>{
 	}
 
 	@Override
-	public Integer getStreamRevision() {
+	public Long getStreamRevision() {
 		return streamRevision;
 	}
 

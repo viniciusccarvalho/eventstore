@@ -47,6 +47,6 @@ public class SnapshotRowMapper<T> implements RowMapper<Snapshot<T>> {
 
 	@Override
 	public Snapshot<T> mapRow(ResultSet rs, int rowNum) throws SQLException {
-		return new BaseSnapshot<>(rs.getString("BUCKET_ID"),rs.getString("STREAM_ID"),rs.getInt("STREAM_REVISION"), (T) serializer.deserialize(rs.getBytes("PAYLOAD"),type));
+		return new BaseSnapshot<>(rs.getString("BUCKET_ID"),rs.getString("STREAM_ID"),rs.getLong("STREAM_REVISION"), (T) serializer.deserialize(rs.getBytes("PAYLOAD"),type));
 	}
 }

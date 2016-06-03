@@ -50,9 +50,9 @@ public class CommitRowMapper implements RowMapper<Commit> {
 	public Commit mapRow(ResultSet rs, int rowNum) throws SQLException {
 		return new BaseCommit(rs.getString("STREAM_ID"),
 				rs.getString("BUCKET_ID"),
-				rs.getInt("STREAM_REVISION"),
+				rs.getLong("STREAM_REVISION"),
 				UUID.fromString(rs.getString("COMMIT_ID")),
-				rs.getInt("COMMIT_SEQUENCE"),
+				rs.getLong("COMMIT_SEQUENCE"),
 				rs.getLong("COMMIT_STAMP"),
 				String.valueOf(rs.getLong("CHECKPOINT_NUMBER")),
 				serializer.deserializeMap(rs.getBytes("HEADERS")),

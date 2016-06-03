@@ -63,7 +63,7 @@ public interface EventStore {
 	 * @throws StreamNotFoundException
 	 * @return A series of committed events represented as a stream.
 	 */
-	EventStream open(String bucketId, String streamId, int minRevision, int maxRevision);
+	EventStream open(String bucketId, String streamId, Long minRevision, Long maxRevision);
 
 	/**
 	 * Reads the stream indicated from the point of the snapshot forward until the maximum revision specified.
@@ -74,7 +74,7 @@ public interface EventStore {
 	 * @throws StorageUnavailableException
 	 * @return A series of committed events represented as a stream.
 	 */
-	EventStream open(Snapshot snapshot, int maxRevision);
+	EventStream open(Snapshot snapshot, Long maxRevision);
 
 	/**
 	 * Starts the dispatch scheduler. If the dispatch scheduler is set to startup automatically, this will not have any affect.

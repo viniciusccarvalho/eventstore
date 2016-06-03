@@ -42,18 +42,7 @@ import reactor.core.publisher.Flux;
  * Instances of this class must be designed to be multi-thread safe such that they can be shared between threads.
  */
 public interface PersistentStream extends CommitEvent, SnapshotAccessor{
-	/**
-	 * TODO: It may not make any sense given that we don't have an IDisposable interface in Java
-	 * @return value indicating whether this instance has been disposed of.
-	 */
-	boolean isDisposed();
 
-	/**
-	 * Initializes and prepares the storage for use, if not already performed.
-	 * @throws StorageException
-	 * @throws StorageUnavailableException
-	 */
-	void initialize();
 
 	/**
 	 * Gets all commits on or after from the specified starting time.
@@ -149,7 +138,7 @@ public interface PersistentStream extends CommitEvent, SnapshotAccessor{
 	 * @param maxRevision
 	 * @return
 	 */
-	Integer getCurrentStreamRevision(String bucketId, String streamId, Integer minRevision, Integer maxRevision);
+	Long getCurrentStreamRevision(String bucketId, String streamId, Long minRevision, Long maxRevision);
 
 	/**
 	 *
@@ -159,6 +148,6 @@ public interface PersistentStream extends CommitEvent, SnapshotAccessor{
 	 * @param maxRevision
 	 * @return
 	 */
-	Integer getCurrentCommitSequence(String bucketId, String streamId, Integer minRevision, Integer maxRevision);
+	Long getCurrentCommitSequence(String bucketId, String streamId, Long minRevision, Long maxRevision);
 
 }

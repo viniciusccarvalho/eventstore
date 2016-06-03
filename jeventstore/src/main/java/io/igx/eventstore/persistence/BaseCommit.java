@@ -39,15 +39,15 @@ public class BaseCommit implements Commit {
 
 	final String streamId;
 	final String bucketId;
-	final Integer streamRevision;
+	final Long streamRevision;
 	final UUID guid;
-	final Integer commitSequence;
+	final Long commitSequence;
 	final Long commitStamp;
 	final Map<String,Object> headers;
 	final Collection<EventMessage> events;
 	final String checkpointToken;
 
-	public BaseCommit(String streamId, String bucketId, Integer streamRevision, UUID guid, Integer commitSequence, Long commitStamp,String checkpointToken, Map<String, Object> headers, Collection<EventMessage> events) {
+	public BaseCommit(String streamId, String bucketId, Long streamRevision, UUID guid, Long commitSequence, Long commitStamp,String checkpointToken, Map<String, Object> headers, Collection<EventMessage> events) {
 		this.streamId = streamId;
 		this.bucketId = bucketId;
 		this.streamRevision = streamRevision;
@@ -67,7 +67,7 @@ public class BaseCommit implements Commit {
 		return bucketId;
 	}
 
-	public Integer getStreamRevision() {
+	public Long getStreamRevision() {
 		return streamRevision;
 	}
 
@@ -75,7 +75,7 @@ public class BaseCommit implements Commit {
 		return guid;
 	}
 
-	public Integer getCommitSequence() {
+	public Long getCommitSequence() {
 		return commitSequence;
 	}
 
