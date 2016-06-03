@@ -27,17 +27,13 @@ package io.igx.eventstore.persistence.jdbc;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
 
 import io.igx.eventstore.Checkpoint;
 import io.igx.eventstore.Commit;
 import io.igx.eventstore.CommitAttempt;
-import io.igx.eventstore.persistence.AbstractCommit;
+import io.igx.eventstore.persistence.BaseCommit;
 import io.igx.eventstore.serializers.Serializer;
 import io.igx.eventstore.Snapshot;
 import io.igx.eventstore.persistence.PersistentStream;
@@ -48,7 +44,8 @@ import reactor.core.publisher.Flux;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.ResultSetExtractor;
-import org.springframework.jdbc.core.RowCallbackHandler;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import org.springframework.jdbc.core.support.AbstractLobCreatingPreparedStatementCallback;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.jdbc.support.lob.LobCreator;
@@ -61,6 +58,7 @@ public class JDBCPersistentStream implements PersistentStream {
 
 
 	private JdbcTemplate template;
+	private NamedParameterJdbcTemplate namedTemplate;
 	private SQLCommands sqlCommands;
 	private Serializer serializer;
 	private LobHandler lobHandler;
@@ -70,6 +68,7 @@ public class JDBCPersistentStream implements PersistentStream {
 		this.serializer = serializer;
 		this.sqlCommands = sqlCommands;
 		this.lobHandler = lobHandler;
+		this.namedTemplate = new NamedParameterJdbcTemplate(template);
 	}
 
 	public boolean isDisposed() {
@@ -137,7 +136,7 @@ public class JDBCPersistentStream implements PersistentStream {
 
 	@Override
 	public Integer getCurrentStreamRevision(String bucketId, String streamId, Integer minRevision, Integer maxRevision) {
-		return null;
+		return template.queryForObject(sqlCommands.getCurrentStreamRevision(),new Object[]{bucketId,streamId,minRevision,maxRevision},Integer.class);
 	}
 
 	@Override
@@ -150,12 +149,29 @@ public class JDBCPersistentStream implements PersistentStream {
 		return persistCommit(attempt);
 	}
 
-	public Snapshot getSnapshot(String bucketId, String streamId, int maxRevision) {
-		return null;
+
+
+	public <T> Snapshot<T> getSnapshot(String bucketId, String streamId, int maxRevision, Class<T> type) {
+		return template.queryForObject(sqlCommands.getSnapshot(),new Object[]{bucketId,streamId,maxRevision}, new SnapshotRowMapper<T>(serializer,type));
 	}
 
 	public boolean add(Snapshot snapshot) {
-		return false;
+		return template.execute(sqlCommands.getAppendSnapshotToCommit(), new AbstractLobCreatingPreparedStatementCallback(lobHandler){
+			@Override
+			protected void setValues(PreparedStatement ps, LobCreator lobCreator) throws SQLException, DataAccessException {
+				ps.setString(1,snapshot.getBucketId());
+				ps.setString(2,snapshot.getStreamId());
+				ps.setInt(3,snapshot.getStreamRevision());
+				lobCreator.setBlobAsBytes(ps,4,serializer.serialize(snapshot.getPayload()));
+				ps.setString(5,snapshot.getBucketId());
+				ps.setString(6,snapshot.getStreamId());
+				ps.setInt(7,snapshot.getStreamRevision());
+				ps.setString(8,snapshot.getBucketId());
+				ps.setString(9,snapshot.getStreamId());
+				ps.setInt(10,snapshot.getStreamRevision());
+
+			}
+		}) > 0;
 	}
 
 	public Flux<StreamHead> getStreamsToSnapshot(String bucketId, int maxThreshold) {
@@ -186,11 +202,12 @@ public class JDBCPersistentStream implements PersistentStream {
 	private Flux<Commit> query(String sql, Object[] arguments){
 		return Flux.create(subscriber -> {
 			try{
+
 				template.query(sql, arguments, new ResultSetExtractor<Object>() {
 					@Override
 					public Object extractData(ResultSet rs) throws SQLException, DataAccessException {
 						int row = 0;
-						AbstractCommitRowMapper rowMapper = new AbstractCommitRowMapper(serializer);
+						CommitRowMapper rowMapper = new CommitRowMapper(serializer);
 						while(rs.next() && !subscriber.isCancelled()){
 							subscriber.onNext(rowMapper.mapRow(rs,row++));
 						}
@@ -226,7 +243,7 @@ public class JDBCPersistentStream implements PersistentStream {
 			}
 		},keyHolder);
 
-		return new AbstractCommit(attempt.getStreamId(),
+		return new BaseCommit(attempt.getStreamId(),
 				attempt.getBucketId(),
 				attempt.getStreamRevision(),
 				attempt.getGuid(),

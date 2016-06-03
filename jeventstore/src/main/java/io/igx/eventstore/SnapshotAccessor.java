@@ -49,7 +49,7 @@ public interface SnapshotAccessor {
 	 * @throws StorageUnavailableException
 	 * @return If found, it returns the snapshot; otherwise null is returned.
 	 */
-	Snapshot getSnapshot(String bucketId, String streamId, int maxRevision);
+	<T> Snapshot<T> getSnapshot(String bucketId, String streamId, int maxRevision, Class<T> type);
 
 	/**
 	 * Adds the snapshot provided to the stream indicated.

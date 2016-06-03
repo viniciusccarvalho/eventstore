@@ -24,74 +24,42 @@
 
 package io.igx.eventstore.persistence;
 
-import java.time.LocalDateTime;
-import java.util.Collection;
-import java.util.Map;
-import java.util.UUID;
-
-import io.igx.eventstore.EventMessage;
-import io.igx.eventstore.Commit;
+import io.igx.eventstore.Snapshot;
 
 /**
  * @author Vinicius Carvalho
  */
-public class AbstractCommit implements Commit {
+public class BaseSnapshot<T> implements Snapshot<T>{
 
-	final String streamId;
-	final String bucketId;
-	final Integer streamRevision;
-	final UUID guid;
-	final Integer commitSequence;
-	final Long commitStamp;
-	final Map<String,Object> headers;
-	final Collection<EventMessage> events;
-	final String checkpointToken;
+	private final String bucketId;
+	private final String streamId;
+	private final Integer streamRevision;
+	private final T payload;
 
-	public AbstractCommit(String streamId, String bucketId, Integer streamRevision, UUID guid, Integer commitSequence, Long commitStamp,String checkpointToken, Map<String, Object> headers, Collection<EventMessage> events) {
-		this.streamId = streamId;
+	public BaseSnapshot(String bucketId, String streamId, Integer streamRevision, T payload) {
 		this.bucketId = bucketId;
+		this.streamId = streamId;
 		this.streamRevision = streamRevision;
-		this.guid = guid;
-		this.commitSequence = commitSequence;
-		this.commitStamp = commitStamp;
-		this.headers = headers;
-		this.events = events;
-		this.checkpointToken = checkpointToken;
+		this.payload = payload;
 	}
 
-	public String getStreamId() {
-		return streamId;
-	}
-
+	@Override
 	public String getBucketId() {
 		return bucketId;
 	}
 
+	@Override
+	public String getStreamId() {
+		return streamId;
+	}
+
+	@Override
 	public Integer getStreamRevision() {
 		return streamRevision;
 	}
 
-	public UUID getGuid() {
-		return guid;
-	}
-
-	public Integer getCommitSequence() {
-		return commitSequence;
-	}
-
-	public Long getCommitStamp() {
-		return commitStamp;
-	}
-
-	public Map<String, Object> getHeaders() {
-		return headers;
-	}
-
-	public Collection<EventMessage> getEvents() {
-		return events;
-	}
-
-	public String getCheckpointToken() {
-		return checkpointToken;
+	@Override
+	public T getPayload() {
+		return payload;
 	}
 }

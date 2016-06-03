@@ -32,9 +32,9 @@ import java.util.UUID;
 import io.igx.eventstore.EventMessage;
 import io.igx.eventstore.EventStore;
 import io.igx.eventstore.EventStream;
-import io.igx.eventstore.persistence.jdbc.AbstractCommitRowMapper;
+import io.igx.eventstore.persistence.jdbc.CommitRowMapper;
 import io.igx.eventstore.sample.SampleApplication;
-import io.igx.eventstore.serializers.JSONSerializer;
+import io.igx.eventstore.serializers.json.JacksonSerializer;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import reactor.core.publisher.Flux;
@@ -74,7 +74,7 @@ public class AccountTests {
 				public void processRow(ResultSet rs) throws SQLException {
 					while(rs.next() && !subscriber.isCancelled()){
 						int col = 0;
-						AbstractCommitRowMapper rowMapper = new AbstractCommitRowMapper(new JSONSerializer());
+						CommitRowMapper rowMapper = new CommitRowMapper(new JacksonSerializer());
 						subscriber.onNext(rowMapper.mapRow(rs,col++));
 					}
 					if(!subscriber.isCancelled()){

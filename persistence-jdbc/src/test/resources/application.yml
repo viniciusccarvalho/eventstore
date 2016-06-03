@@ -1,3 +1,4 @@
+
 spring:
   profiles:
     active: mysql
@@ -5,3 +6,8 @@ spring:
     url: jdbc:mysql://localhost/eventstore
     username: root
     password:
+
+
+logging:
+  level:
+    org.springframework.jdbc.core: TRACE

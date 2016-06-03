@@ -22,79 +22,45 @@
  * SOFTWARE.
  */
 
-package io.igx.eventstore.serializers;
+package io.igx.eventstore.serializers.json;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
+import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.JsonDeserializer;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.type.TypeFactory;
+import com.fasterxml.jackson.databind.RuntimeJsonMappingException;
+import io.igx.eventstore.EventMessage;
 
 /**
  * @author Vinicius Carvalho
  */
-public class JSONSerializer<T> implements Serializer<T>{
+public class EventMessageJacksonDeSerializer extends JsonDeserializer<EventMessage>{
 
 	private ObjectMapper mapper;
 
-	public JSONSerializer(){
-		ObjectMapper mapper = new ObjectMapper();
-		this.mapper = mapper;
-	}
-
-	public JSONSerializer(ObjectMapper mapper){
+	public EventMessageJacksonDeSerializer(ObjectMapper mapper) {
 		this.mapper = mapper;
 	}
 
 	@Override
-	public byte[] serialize(T payload) {
-		byte[] bytes = null;
+	public EventMessage deserialize(JsonParser jsonParser, DeserializationContext deserializationContext) throws IOException, JsonProcessingException {
+		JsonNode node = jsonParser.readValueAsTree();
+		Map headers = mapper.treeToValue(node.get("headers"), Map.class);
+		EventMessage eventMessage = null;
 		try {
-			bytes = mapper.writeValueAsBytes(payload);
-		}
-		catch (JsonProcessingException e) {
-			e.printStackTrace();
-		}
-		return bytes;
-	}
+			Class clazz = Class.forName(node.get("@type").asText());
+			Object payload = mapper.treeToValue(node.get("body"),clazz);
+			eventMessage = new EventMessage(headers,payload);
 
-	@Override
-	public <T> T deserialize(byte[] bytes, Class<T> clazz) {
-		T payload = null;
-		try {
-			payload = mapper.readValue(bytes,clazz);
 		}
-		catch (IOException e) {
-			e.printStackTrace();
+		catch (ClassNotFoundException e) {
+			throw new RuntimeJsonMappingException(e.getMessage());
 		}
-		return payload;
-	}
-
-	@Override
-	public Map<String, Object> deserializeMap(byte[] bytes) {
-		Map<String,Object> payload = new HashMap<>();
-		try {
-			payload = mapper.readValue(bytes,TypeFactory.defaultInstance().constructMapType(HashMap.class,String.class,Object.class));
-		}
-		catch (IOException e) {
-			e.printStackTrace();
-		}
-		return payload;
-	}
-
-	@Override
-	public List<T> deserializeCollection(byte[] bytes, Class<T> clazz) {
-		List<T> payload = new ArrayList<>();
-		try {
-			payload = mapper.readValue(bytes, TypeFactory.defaultInstance().constructCollectionType(ArrayList.class, clazz));
-		}
-		catch (IOException e) {
-			e.printStackTrace();
-		}
-		return payload;
+		return eventMessage;
 	}
 }

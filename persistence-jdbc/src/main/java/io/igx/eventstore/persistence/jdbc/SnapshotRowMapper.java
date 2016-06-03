@@ -24,52 +24,29 @@
 
 package io.igx.eventstore.persistence.jdbc;
 
-import javax.sql.DataSource;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 
-import io.igx.eventstore.persistence.PersistentStream;
-import io.igx.eventstore.persistence.jdbc.properties.SQLCommands;
-import io.igx.eventstore.serializers.json.JacksonSerializer;
+import io.igx.eventstore.Snapshot;
+import io.igx.eventstore.persistence.BaseSnapshot;
 import io.igx.eventstore.serializers.Serializer;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.support.lob.DefaultLobHandler;
-import org.springframework.jdbc.support.lob.LobHandler;
+import org.springframework.jdbc.core.RowMapper;
 
 /**
  * @author Vinicius Carvalho
  */
-@Configuration
-@EnableConfigurationProperties({SQLCommands.class})
-public class PersistentStreamConfiguration {
+public class SnapshotRowMapper<T> implements RowMapper<Snapshot<T>> {
 
-
-	@Autowired
-	private DataSource dataSource;
-
-	@Autowired
-	private SQLCommands sqlCommands;
-
-	@Bean
-	public JdbcTemplate jdbcTemplate(){
-		return new JdbcTemplate(dataSource);
+	private Serializer serializer;
+	private Class<T> type;
+	public SnapshotRowMapper(Serializer serializer, Class<T> type) {
+		this.serializer = serializer;
+		this.type = type;
 	}
 
-	@Bean
-	public LobHandler lobHandler(){
-		return new DefaultLobHandler();
-	}
-
-	@Bean
-	public PersistentStream persistentStream(){
-		return new JDBCPersistentStream(jdbcTemplate(), sqlCommands,eventSerializer(),lobHandler());
-	}
-
-	@Bean
-	public Serializer eventSerializer(){
-		return new JacksonSerializer();
+	@Override
+	public Snapshot<T> mapRow(ResultSet rs, int rowNum) throws SQLException {
+		return new BaseSnapshot<>(rs.getString("BUCKET_ID"),rs.getString("STREAM_ID"),rs.getInt("STREAM_REVISION"), (T) serializer.deserialize(rs.getBytes("PAYLOAD"),type));
 	}
 }

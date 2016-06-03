@@ -26,13 +26,11 @@ package io.igx.eventstore.persistence.jdbc;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 import io.igx.eventstore.Commit;
 import io.igx.eventstore.EventMessage;
-import io.igx.eventstore.persistence.AbstractCommit;
+import io.igx.eventstore.persistence.BaseCommit;
 import io.igx.eventstore.serializers.Serializer;
 
 import org.springframework.jdbc.core.RowMapper;
@@ -40,17 +38,17 @@ import org.springframework.jdbc.core.RowMapper;
 /**
  * @author Vinicius Carvalho
  */
-public class AbstractCommitRowMapper implements RowMapper<Commit> {
+public class CommitRowMapper implements RowMapper<Commit> {
 
 
 	private Serializer serializer;
 
-	public AbstractCommitRowMapper(Serializer serializer) {
+	public CommitRowMapper(Serializer serializer) {
 		this.serializer = serializer;
 	}
 
 	public Commit mapRow(ResultSet rs, int rowNum) throws SQLException {
-		return new AbstractCommit(rs.getString("STREAM_ID"),
+		return new BaseCommit(rs.getString("STREAM_ID"),
 				rs.getString("BUCKET_ID"),
 				rs.getInt("STREAM_REVISION"),
 				UUID.fromString(rs.getString("COMMIT_ID")),

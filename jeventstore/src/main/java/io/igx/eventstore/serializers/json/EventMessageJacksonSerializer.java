@@ -22,52 +22,26 @@
  * SOFTWARE.
  */
 
-package io.igx.eventstore;
+package io.igx.eventstore.serializers.json;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
+import java.io.IOException;
+
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonSerializer;
+import com.fasterxml.jackson.databind.SerializerProvider;
+import io.igx.eventstore.EventMessage;
 
 /**
  * @author Vinicius Carvalho
- *  Represents a single element in a stream of events.
  */
-public class EventMessage<T> {
-
-	protected Map<String,Object> headers;
-	protected T body;
-
-
-	public EventMessage(){
-		this.headers = new HashMap<String, Object>();
-	}
-
-	public EventMessage(Map<String, Object> headers, T body) {
-		this.headers = headers;
-		this.body = body;
-	}
-
-	public EventMessage(T body) {
-		this(new HashMap<String, Object>(),body);
-	}
-
-	/**
-	 *
-	 * @return the metadata which provides additional, unstructured information about this message.
-	 */
-	public Map<String, Object> getHeaders() {
-		return Collections.unmodifiableMap(headers);
-	}
-
-	public void setHeaders(Map<String, Object> headers) {
-		this.headers = headers;
-	}
-
-	public T getBody() {
-		return body;
-	}
-
-	public void setBody(T body) {
-		this.body = body;
+public class EventMessageJacksonSerializer extends JsonSerializer<EventMessage> {
+	@Override
+	public void serialize(EventMessage eventMessage, JsonGenerator jg, SerializerProvider serializerProvider) throws IOException, JsonProcessingException {
+		jg.writeStartObject();
+		jg.writeStringField("@type",eventMessage.getBody().getClass().getName());
+		jg.writeObjectField("body",eventMessage.getBody());
+		jg.writeObjectField("headers",eventMessage.getHeaders());
+		jg.writeEndObject();
 	}
 }
