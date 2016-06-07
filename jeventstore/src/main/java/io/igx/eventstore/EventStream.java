@@ -33,6 +33,7 @@ import io.igx.eventstore.exceptions.ConcurrencyException;
 import io.igx.eventstore.exceptions.DuplicateCommitException;
 import io.igx.eventstore.persistence.StorageException;
 import io.igx.eventstore.persistence.StorageUnavailableException;
+import reactor.core.publisher.Flux;
 
 /**
  * @author Vinicius Carvalho
@@ -68,7 +69,7 @@ public interface EventStream {
 	 *
 	 * @return a flux of events which have been successfully persisted to durable storage.
 	 */
-	List<EventMessage<?>> getCommitedEvents();
+	Flux<EventMessage> getCommitedEvents();
 
 	/**
 	 *
