@@ -32,6 +32,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 import io.igx.eventstore.exceptions.ConcurrencyException;
 import io.igx.eventstore.exceptions.DuplicateCommitException;
@@ -48,14 +50,13 @@ public final class OptimisticEventStream implements EventStream{
 
 	private Logger logger = LoggerFactory.getLogger(OptimisticEventStream.class);
 
-	private final List<UUID> identifiers;
 	private final List<EventMessage> events;
 	private final PersistentStream persistence;
 	private final Map<String,Object> headers;
 
 	private String bucketId;
 	private String streamId;
-	private Long streamRevision = 0L;
+	private AtomicLong streamRevision = new AtomicLong(0L);
 	private Long commitSequence = 0L;
 	private Long minRevision = Long.MIN_VALUE;
 	private Long maxRevision = Long.MAX_VALUE;
@@ -68,11 +69,10 @@ public final class OptimisticEventStream implements EventStream{
 		this.bucketId = bucketId;
 		this.streamId = streamId;
 		this.persistence = persistence;
-		this.identifiers = new LinkedList<UUID>();
 		this.events = new LinkedList<EventMessage>();
 		this.headers = new HashMap<String, Object>();
 		this.commitSequence = persistence.getCurrentCommitSequence(bucketId,streamId,minRevision,maxRevision);
-		this.streamRevision = persistence.getCurrentStreamRevision(bucketId,streamId,minRevision,maxRevision);
+		this.streamRevision.set(persistence.getCurrentStreamRevision(bucketId,streamId,minRevision,maxRevision));
 
 		//TODO: Find another way to throw error (count on db?)
 		//if( minRevision > 0 && committed.size() == 0)
@@ -93,7 +93,7 @@ public final class OptimisticEventStream implements EventStream{
 	}
 
 	public Long getStreamRevision() {
-		return streamRevision;
+		return streamRevision.get();
 	}
 
 	public Long getCommitSequence() {
@@ -106,9 +106,15 @@ public final class OptimisticEventStream implements EventStream{
 				.flatMap(commit -> {return Flux.fromIterable(commit.getEvents());});
 	}
 
-	//TODO: Stream from db
 	public Map<String, Object> getCommitedHeaders() {
-		return null;
+		return persistence.from(this.bucketId, this.streamId, this.minRevision,this.maxRevision)
+				.flatMap(commit -> {return Flux
+						.fromIterable(commit
+								.getHeaders()
+								.entrySet());})
+				.collect(Collectors
+						.toMap(Map.Entry::getKey,Map.Entry::getValue))
+				.get();
 	}
 
 	public List<EventMessage> getUncommitedEvents() {
@@ -128,17 +134,15 @@ public final class OptimisticEventStream implements EventStream{
 
 	public void commitChanges(UUID guid) {
 		logger.debug("Attempting to commit all changes on stream {} to the underlying store.",streamId);
-		if(identifiers.contains(guid)){
-			throw new DuplicateCommitException();
-		}
+
 		if(!hasChanges())
 			return;
 		try{
 			persistChanges(guid);
 		} catch (ConcurrencyException ex){
 			logger.info("The underlying stream {} has changed since the last known commit, refreshing the stream.",streamId);
-			this.commitSequence = persistence.getCurrentCommitSequence(bucketId,streamId,streamRevision+1,Long.MAX_VALUE);
-			this.streamRevision = persistence.getCurrentStreamRevision(bucketId,streamId,streamRevision+1,Long.MAX_VALUE);
+			this.commitSequence = persistence.getCurrentCommitSequence(bucketId,streamId,streamRevision.get(),Long.MAX_VALUE);
+			this.streamRevision.set(persistence.getCurrentStreamRevision(bucketId,streamId,streamRevision.get(),Long.MAX_VALUE));
 			throw ex;
 		}
 
@@ -150,8 +154,9 @@ public final class OptimisticEventStream implements EventStream{
 		CommitAttempt attempt = buildCommitAttempt(guid);
 		logger.debug("Pushing attempt {} on stream {} to the underlying store.",guid,streamId);
 		Commit commit = persistence.commit(attempt);
+
 		this.commitSequence = commit.getCommitSequence();
-		populateStream(streamRevision+1,attempt.streamRevision, Collections.singletonList(commit));
+		populateStream(streamRevision.incrementAndGet(),attempt.streamRevision, Collections.singletonList(commit));
 		clearChanges();
 	}
 
@@ -172,15 +177,12 @@ public final class OptimisticEventStream implements EventStream{
 	private void populateStream(Long minRevision, Long maxRevision, Collection<Commit> commits){
 		for(Commit commit : commits){
 			logger.debug("Adding commit {} with {} events to stream {}",commit.getGuid(),commit.getEvents().size(),streamId);
-			identifiers.add(commit.getGuid());
 			this.commitSequence = commit.getCommitSequence();
 			Long currentRevision = commit.getStreamRevision() - commit.getEvents().size() + 1;
 			if (currentRevision > maxRevision)
 			{
 				return;
 			}
-			copyToCommitedHeaders(commit);
-			copyToEvents(minRevision,maxRevision,currentRevision,commit);
 		}
 	}
 
@@ -212,7 +214,7 @@ public final class OptimisticEventStream implements EventStream{
 				continue;
 			}
 			//committed.add(event);
-			streamRevision = currentRevision +1;
+			streamRevision.getAndAdd(currentRevision+1) ;
 		}
 	}
 
@@ -220,7 +222,7 @@ public final class OptimisticEventStream implements EventStream{
 		logger.debug("Building a commit attempt {} on stream {}.",guid,streamId);
 		CommitAttempt attempt = new CommitAttempt(bucketId,
 				streamId,
-				streamRevision + events.size(),
+				streamRevision.get() + events.size(),
 				guid,
 				commitSequence+1,
 				System.currentTimeMillis(),

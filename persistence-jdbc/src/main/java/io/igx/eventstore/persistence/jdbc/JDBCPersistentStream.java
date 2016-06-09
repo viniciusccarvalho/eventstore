@@ -30,10 +30,12 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.Optional;
 
 import io.igx.eventstore.Checkpoint;
 import io.igx.eventstore.Commit;
 import io.igx.eventstore.CommitAttempt;
+import io.igx.eventstore.exceptions.ConcurrencyException;
 import io.igx.eventstore.persistence.BaseCommit;
 import io.igx.eventstore.serializers.Serializer;
 import io.igx.eventstore.Snapshot;
@@ -43,6 +45,7 @@ import io.igx.eventstore.persistence.jdbc.properties.SQLCommands;
 import reactor.core.publisher.Flux;
 
 import org.springframework.dao.DataAccessException;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.ArgumentPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.PreparedStatementCreator;
@@ -130,17 +133,24 @@ public class JDBCPersistentStream implements PersistentStream {
 
 	@Override
 	public Long getCurrentStreamRevision(String bucketId, String streamId, Long minRevision, Long maxRevision) {
-		return template.queryForObject(sqlCommands.getCurrentStreamRevision(),new Object[]{bucketId,streamId,minRevision,maxRevision},Long.class);
+		return Optional.ofNullable(template.queryForObject(sqlCommands.getCurrentStreamRevision(),new Object[]{bucketId,streamId,minRevision,maxRevision},Long.class)).orElse(0L);
 	}
 
 	@Override
 	public Long getCurrentCommitSequence(String bucketId, String streamId, Long minRevision, Long maxRevision) {
-		return template.queryForObject(sqlCommands.getCurrentCommitSequence(),new Object[]{bucketId,streamId,minRevision,maxRevision},Long.class);
+		return Optional.ofNullable(template.queryForObject(sqlCommands.getCurrentCommitSequence(),new Object[]{bucketId,streamId,minRevision,maxRevision},Long.class)).orElse(0L);
 	}
 
 
 	public Commit commit(CommitAttempt attempt) {
-		return persistCommit(attempt);
+		Commit commit = null;
+		try {
+			commit = persistCommit(attempt);
+		}
+		catch (DuplicateKeyException e) {
+			throw new ConcurrencyException();
+		}
+		return commit;
 	}
 
 

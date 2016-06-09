@@ -60,7 +60,7 @@ public class AccountTests {
 	@Test
 	public void createAccount() throws Exception{
 		AccountCreatedEvent accountCreatedEvent = new AccountCreatedEvent("1","joe",1000.0);
-		EventStream stream = eventStore.open("Account","1",Integer.MIN_VALUE,Integer.MAX_VALUE);
+		EventStream stream = eventStore.open("Account","1",Long.MIN_VALUE,Long.MAX_VALUE);
 		stream.add(new EventMessage(accountCreatedEvent));
 		stream.commitChanges(UUID.randomUUID());
 	}

@@ -25,6 +25,7 @@
 package io.igx.eventstore;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 import io.igx.eventstore.persistence.PersistentStream;
@@ -35,7 +36,7 @@ import reactor.core.publisher.Flux;
 /**
  * @author Vinicius Carvalho
  */
-public  class OptmisticEventStore implements EventStore, CommitEvent{
+public class OptmisticEventStore implements EventStore, CommitEvent{
 
 	protected final PersistentStream persistentStream;
 	protected final Collection<PipelineHook> hooks;
@@ -45,7 +46,7 @@ public  class OptmisticEventStore implements EventStore, CommitEvent{
 		if(persistentStream == null)
 			throw new IllegalArgumentException("Persistence can not be null");
 		this.persistentStream = persistentStream;
-		this.hooks = hooks;
+		this.hooks = (hooks == null) ? Collections.emptyList() : hooks;
 		//TODO how are we going to deal with pipeline hooks and decorator?
 	}
 

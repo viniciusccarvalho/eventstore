@@ -1,3 +1,6 @@
+spring:
+  datasource:
+    continue-on-error: true
 sql:
   commands:
     commitsFromStartingRevision: "SELECT *

@@ -1,4 +1,3 @@
-
 sql:
   commands:
     persistCommit: "INSERT INTO COMMITS ( BUCKET_ID, STREAM_ID, STREAM_ID_ORIGINAL, COMMIT_ID, COMMIT_SEQUENCE, STREAM_REVISION, ITEMS, COMMIT_STAMP, HEADERS, PAYLOAD ) VALUES (?,?,?,?,?,?,?,?,?,?);"
@@ -104,4 +103,5 @@ sql:
 
 spring:
   datasource:
+    continue-on-error: true
     platform: mysql

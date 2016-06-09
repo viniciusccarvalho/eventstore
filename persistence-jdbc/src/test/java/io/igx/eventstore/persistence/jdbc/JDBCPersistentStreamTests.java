@@ -48,6 +48,7 @@ import reactor.core.subscriber.Subscribers;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.SpringApplicationConfiguration;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
 /**
@@ -56,7 +57,7 @@ import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 @RunWith(SpringJUnit4ClassRunner.class)
 @SpringApplicationConfiguration(JDBCPersistentApplication.class)
 
-public class JDBCPersistentStreamTests {
+public class JDBCPersistentStreamTests extends AbstractEventTests {
 
 	@Autowired
 	private JDBCPersistentStream persistentStream;
@@ -77,11 +78,29 @@ public class JDBCPersistentStreamTests {
 		Assert.assertTrue(total == 1);
 	}
 
+	@Test(expected = DuplicateKeyException.class)
+	public void duplicateRevision() throws Exception{
+		CommitAttempt attempt = new CommitAttempt("Account","1",1L, UUID.randomUUID(),1L,System.currentTimeMillis(), Collections.emptyMap(),Collections.singletonList(new EventMessage(new AccountCreatedEvent(1,1000.0))));
+		Commit commit = persistentStream.commit(attempt);
+		CommitAttempt attempt2 = new CommitAttempt("Account","1",1L, UUID.randomUUID(),2L,System.currentTimeMillis(), Collections.emptyMap(),Collections.singletonList(new EventMessage(new FundsTransferedEvent(-100.0))));
+		persistentStream.commit(attempt2);
+
+	}
+
+	@Test(expected = DuplicateKeyException.class)
+	public void duplicateSequence() throws Exception{
+		CommitAttempt attempt = new CommitAttempt("Account","1",1L, UUID.randomUUID(),1L,System.currentTimeMillis(), Collections.emptyMap(),Collections.singletonList(new EventMessage(new AccountCreatedEvent(1,1000.0))));
+		Commit commit = persistentStream.commit(attempt);
+		CommitAttempt attempt2 = new CommitAttempt("Account","1",2L, UUID.randomUUID(),1L,System.currentTimeMillis(), Collections.emptyMap(),Collections.singletonList(new EventMessage(new FundsTransferedEvent(-100.0))));
+		persistentStream.commit(attempt2);
+
+	}
+
 	@Test
 	public void from() throws Exception{
 		CommitAttempt attempt = new CommitAttempt("Account","1",1L, UUID.randomUUID(),1L,System.currentTimeMillis(), Collections.emptyMap(),Collections.singletonList(new EventMessage(new AccountCreatedEvent(1,1000.0))));
 		Commit commit = persistentStream.commit(attempt);
-		CommitAttempt attempt2 = new CommitAttempt("Account","1",1L, UUID.randomUUID(),1L,System.currentTimeMillis(), Collections.emptyMap(),Collections.singletonList(new EventMessage(new FundsTransferedEvent(-100.0))));
+		CommitAttempt attempt2 = new CommitAttempt("Account","1",2L, UUID.randomUUID(),2L,System.currentTimeMillis(), Collections.emptyMap(),Collections.singletonList(new EventMessage(new FundsTransferedEvent(-100.0))));
 		persistentStream.commit(attempt2);
 		Assert.assertTrue(persistentStream.from("Account",LocalDateTime.MIN).toList().get().size() > 0);
 		Assert.assertTrue(persistentStream.from("Account",LocalDateTime.MIN,LocalDateTime.MAX).toList().get().size() > 0);
@@ -95,7 +114,7 @@ public class JDBCPersistentStreamTests {
 	public void multipleCommits(){
 		CommitAttempt attempt = new CommitAttempt("Account","1",1L, UUID.randomUUID(),1L,System.currentTimeMillis(), Collections.emptyMap(),Collections.singletonList(new EventMessage(new AccountCreatedEvent(1,1000.0))));
 		Commit commit = persistentStream.commit(attempt);
-		CommitAttempt attempt2 = new CommitAttempt("Account","1",1L, UUID.randomUUID(),1L,System.currentTimeMillis(), Collections.emptyMap(),Collections.singletonList(new EventMessage(new FundsTransferedEvent(-100.0))));
+		CommitAttempt attempt2 = new CommitAttempt("Account","1",2L, UUID.randomUUID(),2L,System.currentTimeMillis(), Collections.emptyMap(),Collections.singletonList(new EventMessage(new FundsTransferedEvent(-100.0))));
 		persistentStream.commit(attempt2);
 		Flux<Commit> commits = persistentStream.from(commit.getBucketId(),commit.getStreamId(),commit.getStreamRevision(),commit.getStreamRevision()+1);
 		int total = commits.toList().get().size();
@@ -125,7 +144,7 @@ public class JDBCPersistentStreamTests {
 	public void snapshot() throws Exception {
 		CommitAttempt attempt = new CommitAttempt("Account","1",1L, UUID.randomUUID(),1L,System.currentTimeMillis(), Collections.emptyMap(),Collections.singletonList(new EventMessage(new AccountCreatedEvent(1,1000.0))));
 		Commit commit = persistentStream.commit(attempt);
-		CommitAttempt attempt2 = new CommitAttempt("Account","1",1L, UUID.randomUUID(),2L,System.currentTimeMillis(), Collections.emptyMap(),Collections.singletonList(new EventMessage(new FundsTransferedEvent(-100.0))));
+		CommitAttempt attempt2 = new CommitAttempt("Account","1",2L, UUID.randomUUID(),2L,System.currentTimeMillis(), Collections.emptyMap(),Collections.singletonList(new EventMessage(new FundsTransferedEvent(-100.0))));
 		persistentStream.commit(attempt2);
 		Flux<Commit> commits = persistentStream.from(attempt.getBucketId(),attempt.getStreamId(),Long.MIN_VALUE,Long.MAX_VALUE);
 		final AccountAggregate accountAggregate = new AccountAggregate();
@@ -147,7 +166,7 @@ public class JDBCPersistentStreamTests {
 	public void getStreamsToSnapshot() throws Exception {
 		CommitAttempt attempt = new CommitAttempt("Account","1",1L, UUID.randomUUID(),1L,System.currentTimeMillis(), Collections.emptyMap(),Collections.singletonList(new EventMessage(new AccountCreatedEvent(1,1000.0))));
 		Commit commit = persistentStream.commit(attempt);
-		CommitAttempt attempt2 = new CommitAttempt("Account","1",1L, UUID.randomUUID(),1L,System.currentTimeMillis(), Collections.emptyMap(),Collections.singletonList(new EventMessage(new FundsTransferedEvent(-100.0))));
+		CommitAttempt attempt2 = new CommitAttempt("Account","1",2L, UUID.randomUUID(),2L,System.currentTimeMillis(), Collections.emptyMap(),Collections.singletonList(new EventMessage(new FundsTransferedEvent(-100.0))));
 		persistentStream.commit(attempt2);
 		List<StreamHead> streamsToSnapshot = persistentStream.getStreamsToSnapshot("Account",1).toList().get();
 		Assert.assertTrue(streamsToSnapshot.size() > 0);
@@ -173,7 +192,7 @@ public class JDBCPersistentStreamTests {
 	public void deleteStream() throws Exception{
 		CommitAttempt attempt = new CommitAttempt("Account","1",1L, UUID.randomUUID(),1L,System.currentTimeMillis(), Collections.emptyMap(),Collections.singletonList(new EventMessage(new AccountCreatedEvent(1,1000.0))));
 		Commit commit = persistentStream.commit(attempt);
-		CommitAttempt attempt2 = new CommitAttempt("Account","1",1L, UUID.randomUUID(),1L,System.currentTimeMillis(), Collections.emptyMap(),Collections.singletonList(new EventMessage(new FundsTransferedEvent(-100.0))));
+		CommitAttempt attempt2 = new CommitAttempt("Account","1",2L, UUID.randomUUID(),2L,System.currentTimeMillis(), Collections.emptyMap(),Collections.singletonList(new EventMessage(new FundsTransferedEvent(-100.0))));
 		persistentStream.commit(attempt2);
 		persistentStream.deleteStream("Account","1");
 		Assert.assertTrue(persistentStream.from("Account", LocalDateTime.MIN).toList().get().size() == 0);
@@ -192,89 +211,12 @@ public class JDBCPersistentStreamTests {
 	public void purgeAll() throws Exception{
 		CommitAttempt attempt = new CommitAttempt("Account","1",1L, UUID.randomUUID(),1L,System.currentTimeMillis(), Collections.emptyMap(),Collections.singletonList(new EventMessage(new AccountCreatedEvent(1,1000.0))));
 		Commit commit = persistentStream.commit(attempt);
-		CommitAttempt attempt2 = new CommitAttempt("Account","1",1L, UUID.randomUUID(),1L,System.currentTimeMillis(), Collections.emptyMap(),Collections.singletonList(new EventMessage(new FundsTransferedEvent(-100.0))));
+		CommitAttempt attempt2 = new CommitAttempt("Account","1",2L, UUID.randomUUID(),2L,System.currentTimeMillis(), Collections.emptyMap(),Collections.singletonList(new EventMessage(new FundsTransferedEvent(-100.0))));
 		persistentStream.commit(attempt2);
 		persistentStream.purge();
 		Assert.assertTrue(persistentStream.from("Account", LocalDateTime.MIN).toList().get().size() == 0);
 	}
 
-	public static class AccountCreatedEvent{
-		Integer id;
-		Double amount;
-		final Long createdTime;
 
-		@JsonCreator
-		public AccountCreatedEvent(@JsonProperty("id") Integer id, @JsonProperty("amount") Double amount) {
-			this.id = id;
-			this.amount = amount;
-			this.createdTime = System.currentTimeMillis();
-		}
-
-		public Integer getId() {
-			return id;
-		}
-
-		public void setId(Integer id) {
-			this.id = id;
-		}
-
-		public Double getAmount() {
-			return amount;
-		}
-
-		public void setAmount(Double amount) {
-			this.amount = amount;
-		}
-
-		public Long getCreatedTime() {
-			return createdTime;
-		}
-	}
-
-	public static class FundsTransferedEvent {
-		final Double amount;
-
-		@JsonCreator
-		public FundsTransferedEvent(@JsonProperty("amount") Double amount) {
-			this.amount = amount;
-		}
-
-		public Double getAmount() {
-			return amount;
-		}
-
-
-	}
-
-	public static class AccountAggregate {
-		private Integer id;
-		private Double amount;
-		private Long createdTime;
-
-		public void apply(EventMessage event){
-			if(AccountCreatedEvent.class.isAssignableFrom(event.getBody().getClass())){
-				AccountCreatedEvent createEvent = (AccountCreatedEvent)event.getBody();
-				this.id = createEvent.getId();
-				this.amount = createEvent.getAmount();
-				this.createdTime = createEvent.getCreatedTime();
-			}
-			if(FundsTransferedEvent.class.isAssignableFrom(event.getBody().getClass())){
-				FundsTransferedEvent fundsTransferedEvent = (FundsTransferedEvent)event.getBody();
-				this.amount += fundsTransferedEvent.getAmount();
-			}
-		}
-
-		public Integer getId() {
-			return id;
-		}
-
-		public Double getAmount() {
-			return amount;
-		}
-
-		public Long getCreatedTime() {
-			return createdTime;
-		}
-	}
 
 }
